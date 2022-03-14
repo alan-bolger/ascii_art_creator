@@ -7,6 +7,111 @@ Application::Application() : m_window{ sf::VideoMode{ Globals::SCREEN_WIDTH, Glo
 {
 	// Load font
 	m_font.loadFromMemory(Globals::DEFAULT_FONT, (size_t)75864 * sizeof(uint8_t));
+
+	// Set view
+	m_view.setSize(Globals::SCREEN_WIDTH, Globals::SCREEN_HEIGHT);
+	m_view.setCenter(Globals::SCREEN_WIDTH / 2, Globals::SCREEN_HEIGHT / 2);
+
+	// Load an image and obtain its dimensions
+	sf::Image f_tempImage;
+	f_tempImage.loadFromFile("assets/norway.jpg");
+
+	m_imageSizeX = f_tempImage.getSize().x;
+	m_imageSizeY = f_tempImage.getSize().y;
+
+	// Create empty pixel arrays for additional image storage
+	m_original = new uint8_t[m_imageSizeX * m_imageSizeY * 4];
+	m_greyscale = new uint8_t[m_imageSizeX * m_imageSizeY * 4];
+	m_oneBit = new uint8_t[m_imageSizeX * m_imageSizeY * 4];
+	m_quantised = new uint8_t[m_imageSizeX * m_imageSizeY * 4];
+	m_dithered = new uint8_t[m_imageSizeX * m_imageSizeY * 4];
+
+	auto f_pixelPtr = f_tempImage.getPixelsPtr(); // Get pointer to beginning of the image's pixel array
+	sf::Color f_pixel(0, 0, 0, 0); // Temporarily stores pixel attributes
+
+	// Copy temp image into memory
+	for (int i = 0; i < m_imageSizeX * m_imageSizeY; ++i)
+	{
+		m_original[i * 4] = f_pixelPtr[i * 4];
+		m_original[i * 4 + 1] = f_pixelPtr[i * 4 + 1];
+		m_original[i * 4 + 2] = f_pixelPtr[i * 4 + 2];
+		m_original[i * 4 + 3] = f_pixelPtr[i * 4 + 3];
+	}
+
+	// Lambda to convert RGB pixels to greyscale pixels
+	auto f_rgbToGs = [](sf::Color t_pixel)
+	{
+		uint8_t f_gs = uint8_t(0.2162f * float(t_pixel.r) + 0.7152f * float(t_pixel.g) + 0.0722f * float(t_pixel.b));
+		return sf::Color(f_gs, f_gs, f_gs, 255);
+	};
+
+	// Create greyscale image from loaded image
+	for (int i = 0; i < m_imageSizeX * m_imageSizeY; ++i)
+	{
+		f_pixel.r = f_pixelPtr[i * 4];
+		f_pixel.g = f_pixelPtr[i * 4 + 1];
+		f_pixel.b = f_pixelPtr[i * 4 + 2];
+		f_pixel.a = f_pixelPtr[i * 4 + 3];
+
+		sf::Color f_newPixel = f_rgbToGs(f_pixel);
+
+		m_greyscale[i * 4] = uint8_t(f_newPixel.r);
+		m_greyscale[i * 4 + 1] = uint8_t(f_newPixel.g);
+		m_greyscale[i * 4 + 2] = uint8_t(f_newPixel.b);
+		m_greyscale[i * 4 + 3] = uint8_t(f_newPixel.a);
+	}
+
+	// Lambda to quantise greyscale to 1-bit
+	auto f_quantiseGsToOneBit = [](const sf::Color t_pixel)
+	{
+		return t_pixel.r < 128 ? sf::Color::Black : sf::Color::White;
+	};
+
+	// Lambda to quantise greyscale to a selection of bits
+	auto f_quantiseGsToBits = [](const sf::Color t_pixel)
+	{
+		constexpr int f_bits = 3;
+		constexpr float f_levels = (1 << f_bits) - 1;
+		uint8_t f_clamped = uint8_t(std::clamp(std::round(float(t_pixel.r) / 255.0f * f_levels) / f_levels * 255.0f, 0.0f, 255.0f));
+
+		return sf::Color(f_clamped, f_clamped, f_clamped);
+	};
+
+	// Lambda to quantise RGB to a selection of bits
+	auto f_quantiseRGBToBits = [](const sf::Color t_pixel)
+	{
+		constexpr int f_bits = 2;
+		constexpr float f_levels = (1 << f_bits) - 1;
+		uint8_t f_r = uint8_t(std::clamp(std::round(float(t_pixel.r) / 255.0f * f_levels) / f_levels * 255.0f, 0.0f, 255.0f));
+		uint8_t f_g = uint8_t(std::clamp(std::round(float(t_pixel.g) / 255.0f * f_levels) / f_levels * 255.0f, 0.0f, 255.0f));
+		uint8_t f_b = uint8_t(std::clamp(std::round(float(t_pixel.b) / 255.0f * f_levels) / f_levels * 255.0f, 0.0f, 255.0f));
+
+		return sf::Color(f_r, f_g, f_b);
+	};
+
+	// Create 1-bit image from greyscale image
+	for (int i = 0; i < m_imageSizeX * m_imageSizeY; ++i)
+	{
+		f_pixel.r = m_greyscale[i * 4];
+		f_pixel.g = m_greyscale[i * 4 + 1];
+		f_pixel.b = m_greyscale[i * 4 + 2];
+		f_pixel.a = m_greyscale[i * 4 + 3];
+
+		sf::Color f_newPixel = f_quantiseGsToOneBit(f_pixel);
+
+		m_oneBit[i * 4] = uint8_t(f_newPixel.r);
+		m_oneBit[i * 4 + 1] = uint8_t(f_newPixel.g);
+		m_oneBit[i * 4 + 2] = uint8_t(f_newPixel.b);
+		m_oneBit[i * 4 + 3] = uint8_t(f_newPixel.a);
+	}
+
+	// floydSteinbergDither(m_original, m_dithered, f_quantiseGsToOneBit);
+	floydSteinbergDither(m_greyscale, m_dithered, f_quantiseGsToBits);
+	// floydSteinbergDither(m_original, m_dithered, f_quantiseRGBToBits);
+
+	// Copy image to texture
+	m_texture.create(m_imageSizeX, m_imageSizeY);
+	m_texture.update(m_dithered);
 }
 
 /// <summary>
@@ -37,6 +142,84 @@ void Application::run()
 			update();
 			draw();
 		}		
+	}
+}
+
+void Application::floydSteinbergDither(const uint8_t *t_source, uint8_t *t_destination, std::function<sf::Color(const sf::Color)> t_quantiseFunction)
+{
+	// Copy original image to destination image
+	for (int i = 0; i < m_imageSizeX * m_imageSizeY; ++i)
+	{
+		t_destination[i * 4] = t_source[i * 4];
+		t_destination[i * 4 + 1] = t_source[i * 4 + 1];
+		t_destination[i * 4 + 2] = t_source[i * 4 + 2];
+		t_destination[i * 4 + 3] = t_source[i * 4 + 3];
+	}
+
+	// Apply quantisation
+	sf::Vector2i f_pixel;
+
+	for (f_pixel.y = 0; f_pixel.y < m_imageSizeY; ++f_pixel.y)
+	{
+		for (f_pixel.x = 0; f_pixel.x < m_imageSizeX; ++f_pixel.x)
+		{
+			sf::Color f_originalPixel;
+
+			f_originalPixel.r = t_destination[(f_pixel.y * m_imageSizeX + f_pixel.x) * 4];
+			f_originalPixel.g = t_destination[(f_pixel.y * m_imageSizeX + f_pixel.x) * 4 + 1];
+			f_originalPixel.b = t_destination[(f_pixel.y * m_imageSizeX + f_pixel.x) * 4 + 2];
+			f_originalPixel.a = 255;
+
+			sf::Color f_quantisedPixel = t_quantiseFunction(f_originalPixel);
+
+			int32_t f_error[3] =
+			{
+				f_originalPixel.r - f_quantisedPixel.r,
+				f_originalPixel.g - f_quantisedPixel.g,
+				f_originalPixel.b - f_quantisedPixel.b
+			};
+
+			t_destination[(f_pixel.y * m_imageSizeX + f_pixel.x) * 4] = f_quantisedPixel.r;
+			t_destination[(f_pixel.y * m_imageSizeX + f_pixel.x) * 4 + 1] = f_quantisedPixel.g;
+			t_destination[(f_pixel.y * m_imageSizeX + f_pixel.x) * 4 + 2] = f_quantisedPixel.b;
+
+			auto f_updatePixel = [&](const sf::Vector2i &t_offset, const float t_errorBias)
+			{
+				sf::Color f_newPixel;
+				sf::Vector2i f_neighbour = f_pixel + t_offset;
+
+				// Make sure no out of bound pixels are selected
+				if (f_neighbour.x < m_imageSizeX && f_neighbour.x >= 0)
+				{
+					if (f_neighbour.y < m_imageSizeY && f_neighbour.y >= 0)
+					{
+						f_newPixel.r = t_destination[(f_neighbour.y * m_imageSizeX + f_neighbour.x) * 4];
+						f_newPixel.g = t_destination[(f_neighbour.y * m_imageSizeX + f_neighbour.x) * 4 + 1];
+						f_newPixel.b = t_destination[(f_neighbour.y * m_imageSizeX + f_neighbour.x) * 4 + 2];
+						f_newPixel.a = 255;
+
+						int32_t f_intErr[3] = { f_newPixel.r, f_newPixel.g, f_newPixel.b };
+
+						f_intErr[0] += int32_t(float(f_error[0]) * t_errorBias);
+						f_intErr[1] += int32_t(float(f_error[1]) * t_errorBias);
+						f_intErr[2] += int32_t(float(f_error[2]) * t_errorBias);
+
+						t_destination[(f_neighbour.y * m_imageSizeX + f_neighbour.x) * 4] = std::clamp(f_intErr[0], 0, 255);
+						t_destination[(f_neighbour.y * m_imageSizeX + f_neighbour.x) * 4 + 1] = std::clamp(f_intErr[1], 0, 255);
+						t_destination[(f_neighbour.y * m_imageSizeX + f_neighbour.x) * 4 + 2] = std::clamp(f_intErr[2], 0, 255);
+					}
+				}
+				else
+				{
+					return;
+				}
+			};
+
+			f_updatePixel(sf::Vector2i(1, 0), 7.0f / 16.0f);
+			f_updatePixel(sf::Vector2i(-1, 1), 3.0f / 16.0f);
+			f_updatePixel(sf::Vector2i(0, 1), 5.0f / 16.0f);
+			f_updatePixel(sf::Vector2i(1, 1), 1.0f / 16.0f);
+		}
 	}
 }
 
@@ -78,6 +261,9 @@ void Application::update()
 void Application::draw()
 {
 	m_window.clear(sf::Color::Black);
+
+	sf::Sprite m_sprite(m_texture);
+	m_window.draw(m_sprite);
 
 	drawString(16, Globals::SCREEN_HEIGHT - 30, "ASCII ART CREATOR");
 
