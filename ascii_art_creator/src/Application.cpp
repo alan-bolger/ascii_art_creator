@@ -229,6 +229,7 @@ void Application::floydSteinbergDither(const uint8_t *t_source, uint8_t *t_desti
 void Application::processEvents()
 {
 	sf::Event f_event;
+	sf::Vector2f f_windowPos = m_window.mapPixelToCoords(sf::Mouse::getPosition(m_window), m_view);
 
 	while (m_window.pollEvent(f_event))
 	{
@@ -242,6 +243,75 @@ void Application::processEvents()
 			if (sf::Keyboard::Escape == f_event.key.code)
 			{
 				m_exitGame = true;
+			}
+
+			if (sf::Keyboard::O == f_event.key.code)
+			{
+				m_texture.update(m_original);
+			}
+
+			if (sf::Keyboard::G == f_event.key.code)
+			{
+				m_texture.update(m_greyscale);
+			}
+
+			if (sf::Keyboard::Num1 == f_event.key.code)
+			{
+				m_texture.update(m_oneBit);
+			}
+
+			if (sf::Keyboard::Q == f_event.key.code)
+			{
+				m_texture.update(m_quantised);
+			}
+
+			if (sf::Keyboard::D == f_event.key.code)
+			{
+				m_texture.update(m_dithered);
+			}
+		}
+
+		if (sf::Event::MouseMoved == f_event.type)
+		{
+			if (m_panning)
+			{
+				sf::Vector2f f_position = sf::Vector2f(sf::Mouse::getPosition(m_window) - m_panningAnchor);
+				m_view.move(-1.0f * f_position * m_zoomLevel);
+				m_panningAnchor = sf::Mouse::getPosition(m_window);
+			}
+		}
+
+		if (sf::Event::MouseButtonPressed == f_event.type)
+		{
+			if (f_event.mouseButton.button == sf::Mouse::Right)
+			{
+				if (m_panning != true)
+				{
+					m_panning = true;
+					m_panningAnchor = sf::Mouse::getPosition(m_window);
+				}
+			}
+		}
+
+		if (sf::Event::MouseButtonReleased == f_event.type)
+		{
+			if (f_event.mouseButton.button == sf::Mouse::Right)
+			{
+				m_panning = false;
+			}
+		}
+
+		if (sf::Event::MouseWheelMoved == f_event.type)
+		{
+			if (f_event.mouseWheel.delta < 0)
+			{
+				m_view.zoom(2.0f);
+				m_zoomLevel *= 2.0f;
+			}
+			else
+			{
+				m_view.zoom(0.5f);
+				m_zoomLevel *= 0.5f;
 			}
 		}
 	}
@@ -262,8 +332,12 @@ void Application::draw()
 {
 	m_window.clear(sf::Color::Black);
 
+	m_window.setView(m_view);
+
 	sf::Sprite m_sprite(m_texture);
 	m_window.draw(m_sprite);
+
+	m_window.setView(m_window.getDefaultView());
 
 	drawString(16, Globals::SCREEN_HEIGHT - 30, "ASCII ART CREATOR");
 
