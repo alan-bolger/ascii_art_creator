@@ -22,8 +22,6 @@ Application::Application() : m_window{ sf::VideoMode{ Globals::SCREEN_WIDTH, Glo
 	// Create empty pixel arrays for additional image storage
 	m_original = new uint8_t[m_imageSizeX * m_imageSizeY * 4];
 	m_greyscale = new uint8_t[m_imageSizeX * m_imageSizeY * 4];
-	m_oneBit = new uint8_t[m_imageSizeX * m_imageSizeY * 4];
-	m_quantised = new uint8_t[m_imageSizeX * m_imageSizeY * 4];
 	m_dithered = new uint8_t[m_imageSizeX * m_imageSizeY * 4];
 
 	auto f_pixelPtr = f_tempImage.getPixelsPtr(); // Get pointer to beginning of the image's pixel array
@@ -61,12 +59,6 @@ Application::Application() : m_window{ sf::VideoMode{ Globals::SCREEN_WIDTH, Glo
 		m_greyscale[i * 4 + 3] = uint8_t(f_newPixel.a);
 	}
 
-	// Lambda to quantise greyscale to 1-bit
-	auto f_quantiseGsToOneBit = [](const sf::Color t_pixel)
-	{
-		return t_pixel.r < 128 ? sf::Color::Black : sf::Color::White;
-	};
-
 	// Lambda to quantise greyscale to a selection of bits
 	auto f_quantiseGsToBits = [](const sf::Color t_pixel)
 	{
@@ -77,41 +69,28 @@ Application::Application() : m_window{ sf::VideoMode{ Globals::SCREEN_WIDTH, Glo
 		return sf::Color(f_clamped, f_clamped, f_clamped);
 	};
 
-	// Lambda to quantise RGB to a selection of bits
-	auto f_quantiseRGBToBits = [](const sf::Color t_pixel)
-	{
-		constexpr int f_bits = 2;
-		constexpr float f_levels = (1 << f_bits) - 1;
-		uint8_t f_r = uint8_t(std::clamp(std::round(float(t_pixel.r) / 255.0f * f_levels) / f_levels * 255.0f, 0.0f, 255.0f));
-		uint8_t f_g = uint8_t(std::clamp(std::round(float(t_pixel.g) / 255.0f * f_levels) / f_levels * 255.0f, 0.0f, 255.0f));
-		uint8_t f_b = uint8_t(std::clamp(std::round(float(t_pixel.b) / 255.0f * f_levels) / f_levels * 255.0f, 0.0f, 255.0f));
-
-		return sf::Color(f_r, f_g, f_b);
-	};
-
-	// Create 1-bit image from greyscale image
-	for (int i = 0; i < m_imageSizeX * m_imageSizeY; ++i)
-	{
-		f_pixel.r = m_greyscale[i * 4];
-		f_pixel.g = m_greyscale[i * 4 + 1];
-		f_pixel.b = m_greyscale[i * 4 + 2];
-		f_pixel.a = m_greyscale[i * 4 + 3];
-
-		sf::Color f_newPixel = f_quantiseGsToOneBit(f_pixel);
-
-		m_oneBit[i * 4] = uint8_t(f_newPixel.r);
-		m_oneBit[i * 4 + 1] = uint8_t(f_newPixel.g);
-		m_oneBit[i * 4 + 2] = uint8_t(f_newPixel.b);
-		m_oneBit[i * 4 + 3] = uint8_t(f_newPixel.a);
-	}
-
-	// floydSteinbergDither(m_original, m_dithered, f_quantiseGsToOneBit);
 	floydSteinbergDither(m_greyscale, m_dithered, f_quantiseGsToBits);
-	// floydSteinbergDither(m_original, m_dithered, f_quantiseRGBToBits);
 
 	// Copy image to texture
 	m_texture.create(m_imageSizeX, m_imageSizeY);
 	m_texture.update(m_dithered);
+
+	// Create render texture for ASCII text
+	m_renderedText.create(m_imageSizeX, m_imageSizeY);
+
+	// Pixel processing stuff
+	int f_stepsX = m_imageSizeX / 8;
+	int f_stepsY = m_imageSizeY / 8;
+
+	for (int f_startX = 0; f_startX < 8; ++f_startX)
+	{
+		for (int f_startY = 0; f_startY < 8; ++f_startY)
+		{
+
+		}
+	}
+
+
 }
 
 /// <summary>
@@ -119,7 +98,14 @@ Application::Application() : m_window{ sf::VideoMode{ Globals::SCREEN_WIDTH, Glo
 /// </summary>
 Application::~Application()
 {
+	delete[] m_original;
+	m_original = nullptr;
 
+	delete[] m_greyscale;
+	m_greyscale = nullptr;
+
+	delete[] m_dithered;
+	m_dithered = nullptr;
 }
 
 /// <summary>
@@ -145,6 +131,12 @@ void Application::run()
 	}
 }
 
+/// <summary>
+/// Floyd-Steinberg dither.
+/// </summary>
+/// <param name="t_source">The source image.</param>
+/// <param name="t_destination">The destination array.</param>
+/// <param name="t_quantiseFunction">A lambda that provides quantisation.</param>
 void Application::floydSteinbergDither(const uint8_t *t_source, uint8_t *t_destination, std::function<sf::Color(const sf::Color)> t_quantiseFunction)
 {
 	// Copy original image to destination image
@@ -224,12 +216,42 @@ void Application::floydSteinbergDither(const uint8_t *t_source, uint8_t *t_desti
 }
 
 /// <summary>
+/// Convert a square selection of pixels to an ASCII character.
+/// </summary>
+/// <param name="t_pixelCoord">The top-left corner coordinate of the section.</param>
+/// <param name="t_areaSize">The size of the section in pixels (this size is for both width and height).</param>
+void Application::pixelsToASCII(sf::Vector2i t_pixelCoord, int t_areaSize)
+{
+	std::string f_ascii[10] = { " ", ".", ":", "-", "=", "+", "*", "#", "%", "@" };
+
+	int f_totalAvg = 0;
+
+	for (int y = t_pixelCoord.y; y < t_pixelCoord.y + t_areaSize; ++y)
+	{
+		for (int x = t_pixelCoord.x; x < t_pixelCoord.x + t_areaSize; ++x)
+		{
+			int f_pixelAvg = 0;
+
+			f_pixelAvg += m_dithered[(t_pixelCoord.y * m_imageSizeX + t_pixelCoord.x) * 4];
+			f_pixelAvg += m_dithered[(t_pixelCoord.y * m_imageSizeX + t_pixelCoord.x) * 4 + 1];
+			f_pixelAvg += m_dithered[(t_pixelCoord.y * m_imageSizeX + t_pixelCoord.x) * 4 + 2];
+
+			f_totalAvg += f_pixelAvg / 3;
+		}
+	}
+
+	f_totalAvg = f_totalAvg / (t_areaSize * t_areaSize);
+	std::string f_char = f_ascii[f_totalAvg / 25];
+	
+	drawString(t_pixelCoord.x, t_pixelCoord.y, f_char, sf::Color::White, t_areaSize);
+}
+
+/// <summary>
 /// Process events.
 /// </summary>
 void Application::processEvents()
 {
 	sf::Event f_event;
-	sf::Vector2f f_windowPos = m_window.mapPixelToCoords(sf::Mouse::getPosition(m_window), m_view);
 
 	while (m_window.pollEvent(f_event))
 	{
@@ -243,31 +265,6 @@ void Application::processEvents()
 			if (sf::Keyboard::Escape == f_event.key.code)
 			{
 				m_exitGame = true;
-			}
-
-			if (sf::Keyboard::O == f_event.key.code)
-			{
-				m_texture.update(m_original);
-			}
-
-			if (sf::Keyboard::G == f_event.key.code)
-			{
-				m_texture.update(m_greyscale);
-			}
-
-			if (sf::Keyboard::Num1 == f_event.key.code)
-			{
-				m_texture.update(m_oneBit);
-			}
-
-			if (sf::Keyboard::Q == f_event.key.code)
-			{
-				m_texture.update(m_quantised);
-			}
-
-			if (sf::Keyboard::D == f_event.key.code)
-			{
-				m_texture.update(m_dithered);
 			}
 		}
 
@@ -362,5 +359,5 @@ void Application::drawString(int t_x, int t_y, std::string t_string, sf::Color t
 	f_text.setPosition(t_x, t_y);
 	f_text.setFillColor(t_colour);
 
-	m_window.draw(f_text);
+	m_renderedText.draw(f_text);
 }

@@ -22,16 +22,16 @@ private:
 	sf::Texture m_texture;
 	uint8_t *m_original;
 	uint8_t *m_greyscale;
-	uint8_t *m_oneBit;
-	uint8_t *m_quantised;
 	uint8_t *m_dithered;
 	int m_imageSizeX = 0;
 	int m_imageSizeY = 0;
 	bool m_panning = false;
 	sf::Vector2i m_panningAnchor;
 	float m_zoomLevel = 1.0f;
+	sf::RenderTexture m_renderedText;
 
 	void floydSteinbergDither(const uint8_t *t_source, uint8_t *t_destination, std::function<sf::Color(const sf::Color)> t_quantiseFunction);
+	void pixelsToASCII(sf::Vector2i t_pixelCoord, int t_areaSize);
 	void processEvents();
 	void update();
 	void draw();
