@@ -75,22 +75,21 @@ Application::Application() : m_window{ sf::VideoMode{ Globals::SCREEN_WIDTH, Glo
 	m_texture.create(m_imageSizeX, m_imageSizeY);
 	m_texture.update(m_dithered);
 
-	// Create render texture for ASCII text
-	m_renderedText.create(m_imageSizeX, m_imageSizeY);
-
 	// Pixel processing stuff
 	int f_stepsX = m_imageSizeX / 8;
 	int f_stepsY = m_imageSizeY / 8;
 
-	for (int f_startX = 0; f_startX < 8; ++f_startX)
-	{
-		for (int f_startY = 0; f_startY < 8; ++f_startY)
-		{
+	m_renderedText.create(f_stepsX * 8, f_stepsY * 8);
 
-		}
-	}
+	//for (int f_startX = 0; f_startX < f_stepsX * 8; f_startX += 8)
+	//{
+	//	for (int f_startY = 0; f_startY < f_stepsY * 8; f_startY += 8)
+	//	{
+	//		pixelsToASCII(sf::Vector2i(f_startX, f_startY), 8);
+	//	}
+	//}
 
-
+	m_renderedText.display();
 }
 
 /// <summary>
@@ -331,12 +330,10 @@ void Application::draw()
 
 	m_window.setView(m_view);
 
-	sf::Sprite m_sprite(m_texture);
+	sf::Sprite m_sprite(m_renderedText.getTexture());
 	m_window.draw(m_sprite);
 
 	m_window.setView(m_window.getDefaultView());
-
-	drawString(16, Globals::SCREEN_HEIGHT - 30, "ASCII ART CREATOR");
 
 	m_window.display();
 }
