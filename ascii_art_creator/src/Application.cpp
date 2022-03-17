@@ -81,13 +81,13 @@ Application::Application() : m_window{ sf::VideoMode{ Globals::SCREEN_WIDTH, Glo
 
 	m_renderedText.create(f_stepsX * 8, f_stepsY * 8);
 
-	//for (int f_startX = 0; f_startX < f_stepsX * 8; f_startX += 8)
-	//{
-	//	for (int f_startY = 0; f_startY < f_stepsY * 8; f_startY += 8)
-	//	{
-	//		pixelsToASCII(sf::Vector2i(f_startX, f_startY), 8);
-	//	}
-	//}
+	for (int f_startY = 0; f_startY < f_stepsY * 8; f_startY += 8)
+	{
+		for (int f_startX = 0; f_startX < f_stepsX * 8; f_startX += 8)
+		{
+			pixelsToASCII(sf::Vector2i(f_startX, f_startY), 8);
+		}
+	}
 
 	m_renderedText.display();
 }
@@ -240,9 +240,10 @@ void Application::pixelsToASCII(sf::Vector2i t_pixelCoord, int t_areaSize)
 	}
 
 	f_totalAvg = f_totalAvg / (t_areaSize * t_areaSize);
-	std::string f_char = f_ascii[f_totalAvg / 25];
+
+	std::string f_char = f_ascii[(int)f_totalAvg / 28];
 	
-	drawString(t_pixelCoord.x, t_pixelCoord.y, f_char, sf::Color::White, t_areaSize);
+	drawString(t_pixelCoord.x, t_pixelCoord.y, f_char, sf::Color::White, t_areaSize + 2);
 }
 
 /// <summary>

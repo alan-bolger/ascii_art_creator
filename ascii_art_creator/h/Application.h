@@ -6,6 +6,7 @@
 #include <SFML/Graphics.hpp>
 #include <functional>
 #include <algorithm>
+#include <iostream>
 
 class Application
 {
