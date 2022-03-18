@@ -14,7 +14,7 @@ Application::Application() : m_window{ sf::VideoMode{ Globals::SCREEN_WIDTH, Glo
 
 	// Load an image and obtain its dimensions
 	sf::Image f_tempImage;
-	f_tempImage.loadFromFile("assets/norway.jpg");
+	f_tempImage.loadFromFile("assets/mona_lisa.jpg");
 
 	m_imageSizeX = f_tempImage.getSize().x;
 	m_imageSizeY = f_tempImage.getSize().y;
@@ -76,16 +76,17 @@ Application::Application() : m_window{ sf::VideoMode{ Globals::SCREEN_WIDTH, Glo
 	m_texture.update(m_dithered);
 
 	// Pixel processing stuff
-	int f_stepsX = m_imageSizeX / 8;
-	int f_stepsY = m_imageSizeY / 8;
+	int f_areaSize = 8;
+	int f_stepsX = m_imageSizeX / f_areaSize;
+	int f_stepsY = m_imageSizeY / f_areaSize;
 
-	m_renderedText.create(f_stepsX * 8, f_stepsY * 8);
+	m_renderedText.create(f_stepsX * f_areaSize, f_stepsY * f_areaSize);
 
-	for (int f_startY = 0; f_startY < f_stepsY * 8; f_startY += 8)
+	for (int f_startY = 0; f_startY < f_stepsY * f_areaSize; f_startY += f_areaSize)
 	{
-		for (int f_startX = 0; f_startX < f_stepsX * 8; f_startX += 8)
+		for (int f_startX = 0; f_startX < f_stepsX * f_areaSize; f_startX += f_areaSize)
 		{
-			pixelsToASCII(sf::Vector2i(f_startX, f_startY), 8);
+			pixelsToASCII(sf::Vector2i(f_startX, f_startY), f_areaSize + 2);
 		}
 	}
 
@@ -243,7 +244,7 @@ void Application::pixelsToASCII(sf::Vector2i t_pixelCoord, int t_areaSize)
 
 	std::string f_char = f_ascii[(int)f_totalAvg / 28];
 	
-	drawString(t_pixelCoord.x, t_pixelCoord.y, f_char, sf::Color::White, t_areaSize + 2);
+	drawString(t_pixelCoord.x, t_pixelCoord.y, f_char, sf::Color::White, t_areaSize);
 }
 
 /// <summary>
