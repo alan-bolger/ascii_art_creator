@@ -6,7 +6,8 @@
 Application::Application() : m_window{ sf::VideoMode{ Globals::SCREEN_WIDTH, Globals::SCREEN_HEIGHT, 32 }, "ASCII Art Creator", sf::Style::Default }
 {
 	// Load font
-	m_font.loadFromMemory(Globals::DEFAULT_FONT, (size_t)75864 * sizeof(uint8_t));
+	// m_font.loadFromMemory(Globals::DEFAULT_FONT, (size_t)75864 * sizeof(uint8_t));
+	m_font.loadFromFile("assets/pixellari.ttf");
 
 	// Set view
 	m_view.setSize(Globals::SCREEN_WIDTH, Globals::SCREEN_HEIGHT);
@@ -86,7 +87,7 @@ Application::Application() : m_window{ sf::VideoMode{ Globals::SCREEN_WIDTH, Glo
 	{
 		for (int f_startX = 0; f_startX < f_stepsX * f_areaSize; f_startX += f_areaSize)
 		{
-			pixelsToASCII(sf::Vector2i(f_startX, f_startY), f_areaSize + 2);
+			pixelsToASCII(sf::Vector2i(f_startX, f_startY), f_areaSize);
 		}
 	}
 
