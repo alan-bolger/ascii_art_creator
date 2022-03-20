@@ -15,7 +15,7 @@ Application::Application() : m_window{ sf::VideoMode{ Globals::SCREEN_WIDTH, Glo
 
 	// Load an image and obtain its dimensions
 	sf::Image f_tempImage;
-	f_tempImage.loadFromFile("assets/mona_lisa.jpg");
+	f_tempImage.loadFromFile("assets/me.jpg");
 
 	m_imageSizeX = f_tempImage.getSize().x;
 	m_imageSizeY = f_tempImage.getSize().y;
@@ -243,7 +243,7 @@ void Application::pixelsToASCII(sf::Vector2i t_pixelCoord, int t_areaSize)
 
 	f_totalAvg = f_totalAvg / (t_areaSize * t_areaSize);
 
-	std::string f_char = f_ascii[(int)f_totalAvg / 28];
+	std::string f_char = f_ascii[(int)f_totalAvg / 28]; // Dividing by 28 normalises the value to between 0 and 9 inclusive
 	
 	drawString(t_pixelCoord.x, t_pixelCoord.y, f_char, sf::Color::White, t_areaSize);
 }
