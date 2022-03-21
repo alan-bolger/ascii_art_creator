@@ -2,6 +2,7 @@
 #define APPLICATION_H
 
 #include "Globals.h"
+#include "GUI.h"
 
 #include <SFML/Graphics.hpp>
 #include <functional>
@@ -17,6 +18,7 @@ public:
 
 private:
 	sf::RenderWindow m_window;
+	GUI *guiSystem;
 	bool m_exitGame{ false };
 	sf::Font m_font;
 	sf::View m_view;

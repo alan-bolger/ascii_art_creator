@@ -9,6 +9,9 @@ Application::Application() : m_window{ sf::VideoMode{ Globals::SCREEN_WIDTH, Glo
 	// m_font.loadFromMemory(Globals::DEFAULT_FONT, (size_t)75864 * sizeof(uint8_t));
 	m_font.loadFromFile("assets/pixellari.ttf");
 
+	// GUI
+	guiSystem = new GUI(m_window);
+
 	// Set view
 	m_view.setSize(Globals::SCREEN_WIDTH, Globals::SCREEN_HEIGHT);
 	m_view.setCenter(Globals::SCREEN_WIDTH / 2, Globals::SCREEN_HEIGHT / 2);
@@ -321,7 +324,7 @@ void Application::processEvents()
 /// </summary>
 void Application::update()
 {
-	
+	guiSystem->update();
 }
 
 /// <summary>
@@ -336,7 +339,7 @@ void Application::draw()
 	sf::Sprite m_sprite(m_renderedText.getTexture());
 	m_window.draw(m_sprite);
 
-	m_window.setView(m_window.getDefaultView());
+	guiSystem->draw();
 
 	m_window.display();
 }
